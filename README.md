@@ -1,135 +1,160 @@
 # ms-usuarios
 
-Microservicio de BodegaExpress para crear, consultar, actualizar y eliminar
-usuarios, con persistencia en PostgreSQL.
+Microservicio de gestión de usuarios del sistema BodegaExpress. Expone una API
+REST para crear, consultar, actualizar y eliminar usuarios, con persistencia en
+PostgreSQL.
 
-## Tecnologías y requisitos
+## Tecnologías
 
-- Java 17 y Spring Boot 4.1.1.
-- Spring Web MVC, Spring Data JPA y Jakarta Validation.
-- Lombok para generar constructores, getters y setters.
-- PostgreSQL disponible en `localhost:5432`.
-- Maven Wrapper incluido; no es necesario instalar Maven por separado.
+- Java 17
+- Spring Boot 4.1.1 (Spring Web MVC, Spring Data JPA, Jakarta Validation)
+- PostgreSQL
+- Lombok
+- Maven (mediante Maven Wrapper)
 
-## Configuración local
+## Requisitos previos
 
-La configuración se encuentra en [application.yaml](src/main/resources/application.yaml).
+| Herramienta | Versión | Notas |
+|---|---|---|
+| JDK | 17 o superior | La variable `JAVA_HOME` debe apuntar al JDK |
+| PostgreSQL | 14 o superior | Servicio en ejecución y accesible |
+| Git | Cualquiera reciente | Para clonar el repositorio |
+| Postman | Opcional | Para probar la API manualmente |
 
-| Parámetro | Valor actual |
-|---|---|
-| Puerto HTTP | `8081` |
-| Base de datos | `bodega_usuarios` |
-| Usuario PostgreSQL | `postgres` |
-| Contraseña local PostgreSQL | `postgres` |
-| Tabla | `public.usuarios` |
+No es necesario instalar Maven: el repositorio incluye Maven Wrapper (`mvnw` / `mvnw.cmd`).
 
-Si preparas un entorno nuevo, crea la base desde pgAdmin o psql:
+## Instalación y ejecución local
+
+Los comandos se muestran para Windows (PowerShell). En Linux o macOS, reemplazar
+`.\mvnw.cmd` por `./mvnw` y `copy` por `cp`.
+
+### 1. Clonar el repositorio
+
+```powershell
+git clone https://github.com/BodegaExpressDuoc/ms-usuarios.git
+cd ms-usuarios
+```
+
+### 2. Crear la base de datos
+
+Desde pgAdmin o psql, con un usuario con permisos de creación:
 
 ```sql
 CREATE DATABASE bodega_usuarios;
 ```
 
-En el entorno actual la base ya existe. Hibernate crea o actualiza la tabla al
-arrancar mediante `spring.jpa.hibernate.ddl-auto: update`.
+Las tablas no se crean manualmente: Hibernate las crea o actualiza al iniciar la
+aplicación (`spring.jpa.hibernate.ddl-auto: update`).
 
-## Ejecutar
+### 3. Configurar las variables de entorno
 
-Desde una terminal PowerShell ubicada en `ms-usuarios`:
+Las credenciales no se escriben en `application.yaml`; se leen desde variables de
+entorno. Para desarrollo local se usa un archivo `.env`, excluido de Git:
+
+```powershell
+copy .env.example .env
+```
+
+Editar `.env` y completar al menos `USUARIOS_DB_PASSWORD`:
+
+| Variable | Obligatoria | Valor por defecto | Descripción |
+|---|---|---|---|
+| `USUARIOS_DB_URL` | No | `jdbc:postgresql://localhost:5432/bodega_usuarios` | URL JDBC de la base de datos |
+| `USUARIOS_DB_USERNAME` | No | `postgres` | Usuario de PostgreSQL |
+| `USUARIOS_DB_PASSWORD` | **Sí** | — | Contraseña de PostgreSQL |
+| `USUARIOS_PORT` | No | `8081` | Puerto HTTP del servicio |
+
+El archivo se escribe con el formato `NOMBRE=valor`, sin comillas. Spring Boot lo
+carga mediante `spring.config.import`, sin dependencias adicionales, y debe
+ubicarse en la carpeta desde donde se ejecuta la aplicación (la raíz del
+proyecto). Las variables definidas en el sistema operativo tienen prioridad
+sobre el archivo.
+
+### 4. Compilar, probar y empaquetar
+
+```powershell
+.\mvnw.cmd clean install
+```
+
+Ejecuta las pruebas y genera el archivo `target/ms-usuarios-0.0.1-SNAPSHOT.jar`.
+Las pruebas inician el contexto de Spring Boot, por lo que requieren la base de
+datos y el archivo `.env` configurados.
+
+### 5. Ejecutar
+
+Con Maven:
 
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
 
-Mantén la terminal abierta mientras pruebas la API. Para detenerla, usa `Ctrl+C`.
+O con el `.jar` generado:
 
-URL base: `http://localhost:8081/api/usuarios`.
+```powershell
+java -jar target/ms-usuarios-0.0.1-SNAPSHOT.jar
+```
 
-## Estructura
+El servicio queda disponible en `http://localhost:8081/api/usuarios`.
+Para detenerlo, usar `Ctrl+C`.
+
+## Estructura del proyecto
 
 ```text
 src/main/java/cl/duoc/bodegaexpress/usuarios/
-├── MsUsuariosApplication.java
-├── model/Usuario.java
-├── repository/UsuarioRepository.java
-├── service/UsuarioService.java
-└── controller/UsuarioController.java
+├── MsUsuariosApplication.java   Punto de entrada de la aplicación
+├── controller/                  Endpoints REST
+├── service/                     Lógica de negocio y transacciones
+├── repository/                  Acceso a datos con Spring Data JPA
+└── model/                       Entidades JPA
 ```
-
-El controlador recibe las solicitudes HTTP y valida los datos. El servicio
-ejecuta las operaciones dentro de transacciones y verifica que el usuario exista
-al buscar, actualizar o eliminar. El repositorio usa JPA para acceder a PostgreSQL.
 
 ## API
 
-| Método | Ruta | Resultado esperado |
-|---|---|---|
-| GET | `/api/usuarios` | `200`, lista; `[]` si no hay usuarios |
-| GET | `/api/usuarios/{id}` | `200`, usuario; `404` si no existe |
-| POST | `/api/usuarios` | `201`, usuario creado y cabecera `Location` |
-| PUT | `/api/usuarios/{id}` | `200`, usuario actualizado; `404` si no existe |
-| DELETE | `/api/usuarios/{id}` | `204`, sin cuerpo; `404` si no existe |
+URL base: `http://localhost:8081/api/usuarios`
 
-POST y PUT requieren `Content-Type: application/json` y los tres campos:
+| Método | Ruta | Descripción | Respuesta |
+|---|---|---|---|
+| GET | `/api/usuarios` | Lista todos los usuarios | `200` |
+| GET | `/api/usuarios/{id}` | Obtiene un usuario | `200`; `404` si no existe |
+| POST | `/api/usuarios` | Crea un usuario | `201` con cabecera `Location` |
+| PUT | `/api/usuarios/{id}` | Reemplaza los datos de un usuario | `200`; `404` si no existe |
+| DELETE | `/api/usuarios/{id}` | Elimina un usuario | `204`; `404` si no existe |
+
+POST y PUT requieren `Content-Type: application/json`:
 
 ```json
 {
   "nombre": "Carlos",
   "apellido": "Perez",
-  "email": "carlos.prueba@example.com"
+  "email": "carlos.perez@example.com"
 }
 ```
 
-El identificador se genera al crear. PUT conserva el identificador de la ruta y
-reemplaza nombre, apellido y email; no es una actualización parcial.
+- Los tres campos son obligatorios y el email debe tener un formato válido.
+- El email es único.
+- El `id` lo genera la base de datos.
+- Los datos inválidos devuelven `400 Bad Request`.
 
-### Validaciones
+## Pruebas manuales
 
-- Nombre, apellido y email son obligatorios y no pueden contener solo espacios.
-- El email debe tener un formato válido.
-- Los errores de validación de POST y PUT devuelven `400 Bad Request`.
-- El email tiene una restricción de unicidad en PostgreSQL. Actualmente no hay
-  un manejo específico del correo duplicado: puede devolver `500`, no `409`.
-
-## Prueba manual con Postman
-
-1. Envía un POST a `http://localhost:8081/api/usuarios` con el JSON anterior,
-   seleccionando **Body → raw → JSON**. Usa un correo que no exista.
-2. Guarda el `id` recibido en la respuesta `201 Created`.
-3. Envía GET a `/api/usuarios` y a `/api/usuarios/{id}` para consultar el registro.
-4. Envía PUT a `/api/usuarios/{id}` con los tres campos, modificando el apellido.
-5. Comprueba el cambio en PostgreSQL:
+1. Iniciar el servicio (paso 5).
+2. Enviar un POST a `http://localhost:8081/api/usuarios` con el JSON de ejemplo
+   (en Postman: **Body → raw → JSON**) y guardar el `id` de la respuesta.
+3. Consultar con GET `/api/usuarios` y GET `/api/usuarios/{id}`.
+4. Modificar con PUT `/api/usuarios/{id}`.
+5. Verificar los datos en PostgreSQL:
 
    ```sql
-   SELECT id, nombre, apellido, email
-   FROM public.usuarios
-   ORDER BY id;
+   SELECT id, nombre, apellido, email FROM public.usuarios ORDER BY id;
    ```
 
-6. Si deseas eliminar el registro de prueba, envía DELETE a `/api/usuarios/{id}`.
-   Un GET posterior de ese identificador debe devolver `404`.
-7. Envía un POST con nombre vacío o email inválido para comprobar el `400`.
+6. Eliminar con DELETE `/api/usuarios/{id}`; un GET posterior devuelve `404`.
+7. Enviar un POST con el nombre vacío o un email inválido para obtener `400`.
 
-Estas operaciones escriben en la base local. Puedes conservar el usuario para
-revisarlo en pgAdmin omitiendo el paso de eliminación.
+## Servicios relacionados
 
-## Prueba automática
-
-```powershell
-.\mvnw.cmd clean test
-```
-
-La prueba existente, `MsUsuariosApplicationTests.contextLoads`, comprueba que el
-contexto de Spring Boot arranque. Requiere la base PostgreSQL y las credenciales
-configuradas. No verifica individualmente las rutas HTTP ni las operaciones CRUD.
-Este comando termina al completar las pruebas y no deja la API funcionando.
-
-## Alcance actual
-
-Esta versión implementa el CRUD de usuarios. La autenticación JWT y los roles
-del diagrama de arquitectura están pendientes.
-
-| Servicio local | Puerto | Ruta |
+| Servicio | Puerto | Ruta base |
 |---|---|---|
 | ms-usuarios | 8081 | `/api/usuarios` |
 | ms-articulos | 8082 | `/api/articulos` |
-| ms-busqueda | 8083 | `/api/busqueda?nombre=caja` |
+| ms-busqueda | 8083 | `/api/busqueda` |
