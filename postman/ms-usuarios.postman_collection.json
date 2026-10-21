@@ -1,0 +1,246 @@
+{
+  "info": {
+    "name": "ms-usuarios",
+    "description": "Pruebas de la API de ms-usuarios. Ejecutar en orden (Collection Runner): las peticiones guardan el id y el email del usuario creado en variables de la colección.\n\nRequiere el servicio en ejecución en {{baseUrl}}. Crea un usuario de prueba y lo elimina al final.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Crear usuario",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/usuarios",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Carlos\",\n  \"apellido\": \"Perez\",\n  \"email\": \"carlos.{{$timestamp}}@example.com\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde 201 Created', () => pm.response.to.have.status(201));",
+              "const usuario = pm.response.json();",
+              "pm.test('Devuelve el id generado', () => pm.expect(usuario.id).to.be.a('number'));",
+              "pm.test('Incluye la cabecera Location', () => pm.response.to.have.header('Location'));",
+              "pm.collectionVariables.set('usuarioId', usuario.id);",
+              "pm.collectionVariables.set('usuarioEmail', usuario.email);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Listar usuarios",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuarios"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde 200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('Devuelve una lista', () => pm.expect(pm.response.json()).to.be.an('array'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Obtener usuario por id",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuarios/{{usuarioId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde 200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('Devuelve el usuario creado', () => pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get('usuarioId'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Actualizar usuario",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/usuarios/{{usuarioId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Carlos\",\n  \"apellido\": \"Gonzalez\",\n  \"email\": \"{{usuarioEmail}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde 200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('Actualiza el apellido', () => pm.expect(pm.response.json().apellido).to.eql('Gonzalez'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Crear usuario con email repetido",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/usuarios",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Ana\",\n  \"apellido\": \"Soto\",\n  \"email\": \"{{usuarioEmail}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde 409 Conflict', () => pm.response.to.have.status(409));",
+              "pm.test('Error en formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));",
+              "pm.test('Indica que el email ya existe', () => pm.expect(pm.response.json().detail).to.eql('El email ya está registrado'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Crear usuario con datos inválidos",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/usuarios",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"\",\n  \"apellido\": \"Soto\",\n  \"email\": \"correo-invalido\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde 400 Bad Request', () => pm.response.to.have.status(400));",
+              "pm.test('Error en formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));",
+              "const errores = pm.response.json().errores;",
+              "pm.test('Indica el error del nombre', () => pm.expect(errores).to.have.property('nombre'));",
+              "pm.test('Indica el error del email', () => pm.expect(errores).to.have.property('email'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Obtener usuario inexistente",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuarios/999999"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde 404 Not Found', () => pm.response.to.have.status(404));",
+              "pm.test('Error en formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Eliminar usuario",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuarios/{{usuarioId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde 204 No Content', () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Obtener usuario eliminado",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuarios/{{usuarioId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde 404 Not Found', () => pm.response.to.have.status(404));",
+              "pm.test('Error en formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "usuarioId",
+      "value": ""
+    },
+    {
+      "key": "usuarioEmail",
+      "value": ""
+    }
+  ]
+}

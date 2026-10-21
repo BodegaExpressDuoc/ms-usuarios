@@ -171,6 +171,19 @@ código HTTP y un mensaje descriptivo. En los errores de validación se indica c
 6. Eliminar con DELETE `/api/usuarios/{id}`; un GET posterior devuelve `404`.
 7. Enviar un POST con el nombre vacío o un email inválido para obtener `400`.
 
+## Pruebas con Postman
+
+El repositorio incluye la colección
+[`postman/ms-usuarios.postman_collection.json`](postman/ms-usuarios.postman_collection.json).
+
+1. En Postman, seleccionar **File → Import** y elegir el archivo de la colección.
+2. Iniciar el servicio (paso 5).
+3. Abrir la colección, seleccionar **Run** y ejecutar las peticiones en orden.
+
+Cada petición incluye pruebas automáticas que verifican el código HTTP y el
+contenido de la respuesta. La variable `baseUrl` de la colección define la URL
+del servicio. La colección crea un usuario de prueba y lo elimina al final.
+
 ## Servicios relacionados
 
 | Servicio | Puerto | Ruta base |
