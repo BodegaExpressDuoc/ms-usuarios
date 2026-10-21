@@ -77,7 +77,7 @@ sobre el archivo.
 .\mvnw.cmd clean install
 ```
 
-Ejecuta las pruebas y genera el archivo `target/ms-usuarios-0.0.1-SNAPSHOT.jar`.
+Ejecuta las pruebas y genera el archivo `target/ms-usuarios.jar`.
 Las pruebas inician el contexto de Spring Boot, por lo que requieren la base de
 datos y el archivo `.env` configurados.
 
@@ -92,7 +92,7 @@ Con Maven:
 O con el `.jar` generado:
 
 ```powershell
-java -jar target/ms-usuarios-0.0.1-SNAPSHOT.jar
+java -jar target/ms-usuarios.jar
 ```
 
 El servicio queda disponible en `http://localhost:8081/api/usuarios`.
