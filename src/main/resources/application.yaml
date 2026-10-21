@@ -7,7 +7,7 @@ spring:
 
   datasource:
     url: ${USUARIOS_DB_URL:jdbc:postgresql://localhost:5432/bodega_usuarios}
-    username: ${USUARIOS_DB_USERNAME:postgres}
+    username: ${USUARIOS_DB_USERNAME}
     password: ${USUARIOS_DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
@@ -20,4 +20,5 @@ spring:
         format_sql: true
 
 server:
+  address: ${USUARIOS_ADDRESS:127.0.0.1}
   port: ${USUARIOS_PORT:8081}

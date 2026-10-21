@@ -55,13 +55,14 @@ entorno. Para desarrollo local se usa un archivo `.env`, excluido de Git:
 copy .env.example .env
 ```
 
-Editar `.env` y completar al menos `USUARIOS_DB_PASSWORD`:
+Editar `.env` y completar `USUARIOS_DB_USERNAME` y `USUARIOS_DB_PASSWORD`:
 
 | Variable | Obligatoria | Valor por defecto | Descripción |
 |---|---|---|---|
 | `USUARIOS_DB_URL` | No | `jdbc:postgresql://localhost:5432/bodega_usuarios` | URL JDBC de la base de datos |
-| `USUARIOS_DB_USERNAME` | No | `postgres` | Usuario de PostgreSQL |
+| `USUARIOS_DB_USERNAME` | **Sí** | — | Usuario de PostgreSQL |
 | `USUARIOS_DB_PASSWORD` | **Sí** | — | Contraseña de PostgreSQL |
+| `USUARIOS_ADDRESS` | No | `127.0.0.1` | Dirección de red en la que escucha el servicio |
 | `USUARIOS_PORT` | No | `8081` | Puerto HTTP del servicio |
 
 El archivo se escribe con el formato `NOMBRE=valor`, sin comillas. Spring Boot lo
@@ -116,8 +117,8 @@ URL base: `http://localhost:8081/api/usuarios`
 |---|---|---|---|
 | GET | `/api/usuarios` | Lista todos los usuarios | `200` |
 | GET | `/api/usuarios/{id}` | Obtiene un usuario | `200`; `404` si no existe |
-| POST | `/api/usuarios` | Crea un usuario | `201` con cabecera `Location` |
-| PUT | `/api/usuarios/{id}` | Reemplaza los datos de un usuario | `200`; `404` si no existe |
+| POST | `/api/usuarios` | Crea un usuario | `201` con cabecera `Location`; `409` si el email ya existe |
+| PUT | `/api/usuarios/{id}` | Reemplaza los datos de un usuario | `200`; `404` si no existe; `409` si el email ya existe |
 | DELETE | `/api/usuarios/{id}` | Elimina un usuario | `204`; `404` si no existe |
 
 POST y PUT requieren `Content-Type: application/json`:
@@ -131,9 +132,28 @@ POST y PUT requieren `Content-Type: application/json`:
 ```
 
 - Los tres campos son obligatorios y el email debe tener un formato válido.
-- El email es único.
+- El email es único; un email ya registrado devuelve `409 Conflict`.
 - El `id` lo genera la base de datos.
 - Los datos inválidos devuelven `400 Bad Request`.
+
+### Formato de errores
+
+Los errores se devuelven en formato
+[ProblemDetail (RFC 9457)](https://www.rfc-editor.org/rfc/rfc9457), con el
+código HTTP y un mensaje descriptivo. En los errores de validación se indica cada campo rechazado:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Bad Request",
+  "status": 400,
+  "detail": "Los datos enviados no son válidos",
+  "instance": "/api/usuarios",
+  "errores": {
+    "nombre": "El nombre es obligatorio"
+  }
+}
+```
 
 ## Pruebas manuales
 
