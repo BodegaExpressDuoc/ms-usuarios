@@ -78,8 +78,8 @@ sobre el archivo.
 ```
 
 Ejecuta las pruebas y genera el archivo `target/ms-usuarios.jar`.
-Las pruebas inician el contexto de Spring Boot, por lo que requieren la base de
-datos y el archivo `.env` configurados.
+Las pruebas de controlador usan un repositorio simulado, por lo que no requieren
+PostgreSQL ni el archivo `.env`.
 
 ### 5. Ejecutar
 
