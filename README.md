@@ -189,5 +189,5 @@ del servicio. La colección crea un usuario de prueba y lo elimina al final.
 | Servicio | Puerto | Ruta base |
 |---|---|---|
 | ms-usuarios | 8081 | `/api/usuarios` |
-| ms-articulos | 8082 | `/api/articulos` |
-| ms-busqueda | 8083 | `/api/busqueda` |
+| ms-articulos | 8085 | `/api/articulos` |
+| ms-busqueda | 8084 | `/api/busqueda` |
