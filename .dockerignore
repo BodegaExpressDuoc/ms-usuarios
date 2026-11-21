@@ -1,0 +1,8 @@
+target/
+.env
+.git/
+.mvn/
+mvnw
+mvnw.cmd
+postman/
+*.md
