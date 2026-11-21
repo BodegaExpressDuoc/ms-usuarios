@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "ms-usuarios",
-    "description": "Pruebas de la API de ms-usuarios. Ejecutar en orden (Collection Runner): las peticiones guardan el id y el email del usuario creado en variables de la colección.\n\nRequiere el servicio en ejecución en {{baseUrl}}. Crea un usuario de prueba y lo elimina al final.",
+    "description": "Pruebas de la API de ms-usuarios. Ejecutar en orden (Collection Runner): se crea un usuario, se inicia sesión y el token JWT se guarda en la variable `token`, que la colección envía como Bearer en las rutas protegidas.\n\nRequiere el servicio en ejecución en {{baseUrl}}. Crea un usuario de prueba y lo elimina al final.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -15,10 +15,13 @@
             "value": "application/json"
           }
         ],
-        "url": "{{baseUrl}}/api/usuarios",
+        "url": "{{baseUrl}}/api/v1/usuarios",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"nombre\": \"Carlos\",\n  \"apellido\": \"Perez\",\n  \"email\": \"carlos.{{$timestamp}}@example.com\"\n}"
+          "raw": "{\n  \"nombre\": \"Carlos\",\n  \"apellido\": \"Perez\",\n  \"email\": \"carlos.{{$timestamp}}@example.com\",\n  \"password\": \"Clave123\"\n}"
+        },
+        "auth": {
+          "type": "noauth"
         }
       },
       "event": [
@@ -32,18 +35,107 @@
               "pm.test('Devuelve el id generado', () => pm.expect(usuario.id).to.be.a('number'));",
               "pm.test('Incluye la cabecera Location', () => pm.response.to.have.header('Location'));",
               "pm.collectionVariables.set('usuarioId', usuario.id);",
-              "pm.collectionVariables.set('usuarioEmail', usuario.email);"
+              "pm.collectionVariables.set('usuarioEmail', usuario.email);",
+              "pm.test('No devuelve la contraseña', () => pm.expect(usuario).to.not.have.property('password'));"
             ]
           }
         }
       ]
     },
     {
-      "name": "2. Listar usuarios",
+      "name": "2. Iniciar sesión",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{usuarioEmail}}\",\n  \"password\": \"Clave123\"\n}"
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde 200 OK', () => pm.response.to.have.status(200));",
+              "const token = pm.response.json().token;",
+              "pm.test('Devuelve un token JWT', () => pm.expect(token).to.be.a('string').and.not.empty);",
+              "pm.collectionVariables.set('token', token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Iniciar sesión con contraseña incorrecta",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{usuarioEmail}}\",\n  \"password\": \"incorrecta\"\n}"
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde 401 Unauthorized', () => pm.response.to.have.status(401));",
+              "pm.test('Error en formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Listar usuarios sin token",
       "request": {
         "method": "GET",
         "header": [],
-        "url": "{{baseUrl}}/api/usuarios"
+        "url": "{{baseUrl}}/api/v1/usuarios",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde 401 Unauthorized', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Listar usuarios",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/usuarios"
       },
       "event": [
         {
@@ -59,11 +151,11 @@
       ]
     },
     {
-      "name": "3. Obtener usuario por id",
+      "name": "6. Obtener usuario por id",
       "request": {
         "method": "GET",
         "header": [],
-        "url": "{{baseUrl}}/api/usuarios/{{usuarioId}}"
+        "url": "{{baseUrl}}/api/v1/usuarios/{{usuarioId}}"
       },
       "event": [
         {
@@ -79,7 +171,7 @@
       ]
     },
     {
-      "name": "4. Actualizar usuario",
+      "name": "7. Actualizar usuario",
       "request": {
         "method": "PUT",
         "header": [
@@ -88,10 +180,10 @@
             "value": "application/json"
           }
         ],
-        "url": "{{baseUrl}}/api/usuarios/{{usuarioId}}",
+        "url": "{{baseUrl}}/api/v1/usuarios/{{usuarioId}}",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"nombre\": \"Carlos\",\n  \"apellido\": \"Gonzalez\",\n  \"email\": \"{{usuarioEmail}}\"\n}"
+          "raw": "{\n  \"nombre\": \"Carlos\",\n  \"apellido\": \"Gonzalez\",\n  \"email\": \"{{usuarioEmail}}\",\n  \"password\": \"Clave123\"\n}"
         }
       },
       "event": [
@@ -108,7 +200,7 @@
       ]
     },
     {
-      "name": "5. Crear usuario con email repetido",
+      "name": "8. Crear usuario con email repetido",
       "request": {
         "method": "POST",
         "header": [
@@ -117,10 +209,13 @@
             "value": "application/json"
           }
         ],
-        "url": "{{baseUrl}}/api/usuarios",
+        "url": "{{baseUrl}}/api/v1/usuarios",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"nombre\": \"Ana\",\n  \"apellido\": \"Soto\",\n  \"email\": \"{{usuarioEmail}}\"\n}"
+          "raw": "{\n  \"nombre\": \"Ana\",\n  \"apellido\": \"Soto\",\n  \"email\": \"{{usuarioEmail}}\",\n  \"password\": \"Clave123\"\n}"
+        },
+        "auth": {
+          "type": "noauth"
         }
       },
       "event": [
@@ -138,7 +233,7 @@
       ]
     },
     {
-      "name": "6. Crear usuario con datos inválidos",
+      "name": "9. Crear usuario con datos inválidos",
       "request": {
         "method": "POST",
         "header": [
@@ -147,10 +242,13 @@
             "value": "application/json"
           }
         ],
-        "url": "{{baseUrl}}/api/usuarios",
+        "url": "{{baseUrl}}/api/v1/usuarios",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"nombre\": \"\",\n  \"apellido\": \"Soto\",\n  \"email\": \"correo-invalido\"\n}"
+          "raw": "{\n  \"nombre\": \"\",\n  \"apellido\": \"Soto\",\n  \"email\": \"correo-invalido\",\n  \"password\": \"\"\n}"
+        },
+        "auth": {
+          "type": "noauth"
         }
       },
       "event": [
@@ -163,18 +261,19 @@
               "pm.test('Error en formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));",
               "const errores = pm.response.json().errores;",
               "pm.test('Indica el error del nombre', () => pm.expect(errores).to.have.property('nombre'));",
-              "pm.test('Indica el error del email', () => pm.expect(errores).to.have.property('email'));"
+              "pm.test('Indica el error del email', () => pm.expect(errores).to.have.property('email'));",
+              "pm.test('Indica el error de la contraseña', () => pm.expect(errores).to.have.property('password'));"
             ]
           }
         }
       ]
     },
     {
-      "name": "7. Obtener usuario inexistente",
+      "name": "10. Obtener usuario inexistente",
       "request": {
         "method": "GET",
         "header": [],
-        "url": "{{baseUrl}}/api/usuarios/999999"
+        "url": "{{baseUrl}}/api/v1/usuarios/999999"
       },
       "event": [
         {
@@ -190,11 +289,11 @@
       ]
     },
     {
-      "name": "8. Eliminar usuario",
+      "name": "11. Eliminar usuario",
       "request": {
         "method": "DELETE",
         "header": [],
-        "url": "{{baseUrl}}/api/usuarios/{{usuarioId}}"
+        "url": "{{baseUrl}}/api/v1/usuarios/{{usuarioId}}"
       },
       "event": [
         {
@@ -209,11 +308,11 @@
       ]
     },
     {
-      "name": "9. Obtener usuario eliminado",
+      "name": "12. Obtener usuario eliminado",
       "request": {
         "method": "GET",
         "header": [],
-        "url": "{{baseUrl}}/api/usuarios/{{usuarioId}}"
+        "url": "{{baseUrl}}/api/v1/usuarios/{{usuarioId}}"
       },
       "event": [
         {
@@ -241,6 +340,20 @@
     {
       "key": "usuarioEmail",
       "value": ""
+    },
+    {
+      "key": "token",
+      "value": ""
     }
-  ]
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  }
 }
