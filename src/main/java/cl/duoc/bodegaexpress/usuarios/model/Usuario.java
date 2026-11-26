@@ -1,5 +1,6 @@
 package cl.duoc.bodegaexpress.usuarios.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -30,4 +31,9 @@ public class Usuario {
     @Email(message = "El correo no es válido")
     @Column(nullable = false, unique = true)
     private String email;
+
+    @NotBlank(message = "La contraseña es obligatoria")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @Column(nullable = false)
+    private String password;
 }

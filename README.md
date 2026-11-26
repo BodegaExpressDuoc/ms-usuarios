@@ -55,7 +55,7 @@ entorno. Para desarrollo local se usa un archivo `.env`, excluido de Git:
 copy .env.example .env
 ```
 
-Editar `.env` y completar `USUARIOS_DB_USERNAME` y `USUARIOS_DB_PASSWORD`:
+Editar `.env` y completar `USUARIOS_DB_USERNAME`, `USUARIOS_DB_PASSWORD` y `JWT_SECRET`:
 
 | Variable | Obligatoria | Valor por defecto | Descripción |
 |---|---|---|---|
@@ -64,6 +64,8 @@ Editar `.env` y completar `USUARIOS_DB_USERNAME` y `USUARIOS_DB_PASSWORD`:
 | `USUARIOS_DB_PASSWORD` | **Sí** | — | Contraseña de PostgreSQL |
 | `USUARIOS_ADDRESS` | No | `127.0.0.1` | Dirección de red en la que escucha el servicio |
 | `USUARIOS_PORT` | No | `8081` | Puerto HTTP del servicio |
+| `JWT_SECRET` | **Sí** | — | Clave para firmar los tokens JWT (texto aleatorio de al menos 32 caracteres) |
+| `JWT_EXPIRACION_MINUTOS` | No | `60` | Minutos de validez del token |
 
 El archivo se escribe con el formato `NOMBRE=valor`, sin comillas. Spring Boot lo
 carga mediante `spring.config.import`, sin dependencias adicionales, y debe
@@ -95,7 +97,7 @@ O con el `.jar` generado:
 java -jar target/ms-usuarios.jar
 ```
 
-El servicio queda disponible en `http://localhost:8081/api/usuarios`.
+El servicio queda disponible en `http://localhost:8081/api/v1/usuarios`.
 Para detenerlo, usar `Ctrl+C`.
 
 ## Estructura del proyecto
@@ -111,15 +113,16 @@ src/main/java/cl/duoc/bodegaexpress/usuarios/
 
 ## API
 
-URL base: `http://localhost:8081/api/usuarios`
+URL base: `http://localhost:8081/api/v1/usuarios`
 
 | Método | Ruta | Descripción | Respuesta |
 |---|---|---|---|
-| GET | `/api/usuarios` | Lista todos los usuarios | `200` |
-| GET | `/api/usuarios/{id}` | Obtiene un usuario | `200`; `404` si no existe |
-| POST | `/api/usuarios` | Crea un usuario | `201` con cabecera `Location`; `409` si el email ya existe |
-| PUT | `/api/usuarios/{id}` | Reemplaza los datos de un usuario | `200`; `404` si no existe; `409` si el email ya existe |
-| DELETE | `/api/usuarios/{id}` | Elimina un usuario | `204`; `404` si no existe |
+| GET | `/api/v1/usuarios` | Lista todos los usuarios | `200` |
+| GET | `/api/v1/usuarios/{id}` | Obtiene un usuario | `200`; `404` si no existe |
+| POST | `/api/v1/auth/login` | Inicia sesión y entrega un token JWT | `200`; `401` si las credenciales son inválidas |
+| POST | `/api/v1/usuarios` | Crea un usuario | `201` con cabecera `Location`; `409` si el email ya existe |
+| PUT | `/api/v1/usuarios/{id}` | Reemplaza los datos de un usuario | `200`; `404` si no existe; `409` si el email ya existe |
+| DELETE | `/api/v1/usuarios/{id}` | Elimina un usuario | `204`; `404` si no existe |
 
 POST y PUT requieren `Content-Type: application/json`:
 
@@ -127,14 +130,45 @@ POST y PUT requieren `Content-Type: application/json`:
 {
   "nombre": "Carlos",
   "apellido": "Perez",
-  "email": "carlos.perez@example.com"
+  "email": "carlos.perez@example.com",
+  "password": "Clave123"
 }
 ```
 
-- Los tres campos son obligatorios y el email debe tener un formato válido.
+- Todos los campos son obligatorios y el email debe tener un formato válido.
+- La contraseña se guarda encriptada (BCrypt) y nunca se incluye en las respuestas.
 - El email es único; un email ya registrado devuelve `409 Conflict`.
 - El `id` lo genera la base de datos.
 - Los datos inválidos devuelven `400 Bad Request`.
+
+### Autenticación
+
+Las rutas están protegidas con JWT, excepto el registro (`POST /api/v1/usuarios`)
+y el inicio de sesión (`POST /api/v1/auth/login`).
+
+1. Iniciar sesión con el email y la contraseña de un usuario registrado:
+
+   ```json
+   POST /api/v1/auth/login
+   {
+     "email": "carlos.perez@example.com",
+     "password": "Clave123"
+   }
+   ```
+
+   Respuesta `200`:
+
+   ```json
+   { "token": "eyJhbGciOiJIUzI1NiJ9..." }
+   ```
+
+2. Enviar el token en las demás peticiones, en la cabecera:
+
+   ```text
+   Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+   ```
+
+Sin token, o con un token inválido o vencido, el servicio responde `401 Unauthorized`.
 
 ### Formato de errores
 
@@ -148,7 +182,7 @@ código HTTP y un mensaje descriptivo. En los errores de validación se indica c
   "title": "Bad Request",
   "status": 400,
   "detail": "Los datos enviados no son válidos",
-  "instance": "/api/usuarios",
+  "instance": "/api/v1/usuarios",
   "errores": {
     "nombre": "El nombre es obligatorio"
   }
@@ -158,18 +192,20 @@ código HTTP y un mensaje descriptivo. En los errores de validación se indica c
 ## Pruebas manuales
 
 1. Iniciar el servicio (paso 5).
-2. Enviar un POST a `http://localhost:8081/api/usuarios` con el JSON de ejemplo
+2. Enviar un POST a `http://localhost:8081/api/v1/usuarios` con el JSON de ejemplo
    (en Postman: **Body → raw → JSON**) y guardar el `id` de la respuesta.
-3. Consultar con GET `/api/usuarios` y GET `/api/usuarios/{id}`.
-4. Modificar con PUT `/api/usuarios/{id}`.
-5. Verificar los datos en PostgreSQL:
+3. Iniciar sesión con POST `/api/v1/auth/login` y usar el token recibido en las
+   siguientes peticiones (en Postman: **Authorization → Bearer Token**).
+4. Consultar con GET `/api/v1/usuarios` y GET `/api/v1/usuarios/{id}`.
+5. Modificar con PUT `/api/v1/usuarios/{id}`.
+6. Verificar los datos en PostgreSQL:
 
    ```sql
    SELECT id, nombre, apellido, email FROM public.usuarios ORDER BY id;
    ```
 
-6. Eliminar con DELETE `/api/usuarios/{id}`; un GET posterior devuelve `404`.
-7. Enviar un POST con el nombre vacío o un email inválido para obtener `400`.
+7. Eliminar con DELETE `/api/v1/usuarios/{id}`; un GET posterior devuelve `404`.
+8. Enviar un POST con el nombre vacío o un email inválido para obtener `400`.
 
 ## Pruebas con Postman
 
@@ -182,12 +218,13 @@ El repositorio incluye la colección
 
 Cada petición incluye pruebas automáticas que verifican el código HTTP y el
 contenido de la respuesta. La variable `baseUrl` de la colección define la URL
-del servicio. La colección crea un usuario de prueba y lo elimina al final.
+del servicio. La colección crea un usuario de prueba, inicia sesión para obtener el
+token (se guarda en la variable `token`) y elimina el usuario al final.
 
 ## Servicios relacionados
 
 | Servicio | Puerto | Ruta base |
 |---|---|---|
-| ms-usuarios | 8081 | `/api/usuarios` |
-| ms-articulos | 8082 | `/api/articulos` |
-| ms-busqueda | 8083 | `/api/busqueda` |
+| ms-usuarios | 8081 | `/api/v1/usuarios` |
+| ms-articulos | 8082 | `/api/v1/articulos` |
+| ms-busqueda | 8083 | `/api/v1/busqueda` |
