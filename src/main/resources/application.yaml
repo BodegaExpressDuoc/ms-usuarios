@@ -23,6 +23,10 @@ jwt:
   secret: ${JWT_SECRET}
   expiracion-minutos: ${JWT_EXPIRACION_MINUTOS:60}
 
+gateway:
+  # Secreto que agrega el API Gateway en el header X-Gateway-Secret. Vacío = no se exige (local y tests).
+  secret: ${GATEWAY_SECRET:}
+
 server:
   address: ${USUARIOS_ADDRESS:127.0.0.1}
   port: ${USUARIOS_PORT:8081}
