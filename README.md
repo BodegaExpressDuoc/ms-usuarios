@@ -66,6 +66,7 @@ Editar `.env` y completar `USUARIOS_DB_USERNAME`, `USUARIOS_DB_PASSWORD` y `JWT_
 | `USUARIOS_PORT` | No | `8081` | Puerto HTTP del servicio |
 | `JWT_SECRET` | **Sí** | — | Clave para firmar los tokens JWT (texto aleatorio de al menos 32 caracteres) |
 | `JWT_EXPIRACION_MINUTOS` | No | `60` | Minutos de validez del token |
+| `GATEWAY_SECRET` | No | vacío | Secreto que el AWS API Gateway envía en el header `X-Gateway-Secret`. Si está definido, se rechazan con 403 las peticiones que no lo traen (solo se entra por el Gateway). Vacío = no se exige |
 
 El archivo se escribe con el formato `NOMBRE=valor`, sin comillas. Spring Boot lo
 carga mediante `spring.config.import`, sin dependencias adicionales, y debe

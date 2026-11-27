@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "ms-usuarios",
-    "description": "Pruebas de la API de ms-usuarios. Ejecutar en orden (Collection Runner): se crea un usuario, se inicia sesión y el token JWT se guarda en la variable `token`, que la colección envía como Bearer en las rutas protegidas.\n\nRequiere el servicio en ejecución en {{baseUrl}}. Crea un usuario de prueba y lo elimina al final.",
+    "description": "Pruebas de la API de ms-usuarios. Ejecutar en orden (Collection Runner): se crea un usuario, se inicia sesión y el token JWT se guarda en la variable `token`, que la colección envía como Bearer en las rutas protegidas.\n\nRequiere el servicio en ejecución en {{baseUrl}}. Crea un usuario de prueba y lo elimina al final.\n\nUso local: `baseUrl` = http://localhost:8081 (o el puerto de tu .env). Uso a través del AWS API Gateway: `baseUrl` = URL del Gateway (el registro y el login son rutas públicas; el resto exige el token).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
