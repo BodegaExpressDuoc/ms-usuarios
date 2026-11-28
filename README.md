@@ -2,15 +2,17 @@
 
 Microservicio de gestión de usuarios del sistema BodegaExpress. Expone una API
 REST para crear, consultar, actualizar y eliminar usuarios, con persistencia en
-PostgreSQL.
+PostgreSQL, y el inicio de sesión que entrega el token JWT usado por todo el sistema.
 
 ## Tecnologías
 
 - Java 17
-- Spring Boot 4.1.1 (Spring Web MVC, Spring Data JPA, Jakarta Validation)
+- Spring Boot 4.1.1 (Spring Web MVC, Spring Data JPA, Jakarta Validation, Spring Security)
+- JJWT 0.12.6 (tokens JWT firmados con HS256)
 - PostgreSQL
 - Lombok
 - Maven (mediante Maven Wrapper)
+- Docker y GitHub Actions (despliegue en AWS)
 
 ## Requisitos previos
 
@@ -106,10 +108,13 @@ Para detenerlo, usar `Ctrl+C`.
 ```text
 src/main/java/cl/duoc/bodegaexpress/usuarios/
 ├── MsUsuariosApplication.java   Punto de entrada de la aplicación
-├── controller/                  Endpoints REST
+├── controller/                  Endpoints REST (usuarios y login)
+├── dto/                         Petición y respuesta del login
 ├── service/                     Lógica de negocio y transacciones
 ├── repository/                  Acceso a datos con Spring Data JPA
-└── model/                       Entidades JPA
+├── model/                       Entidades JPA
+├── security/                    Spring Security, emisión y validación de JWT y FiltroGateway
+└── exception/                   Manejo de errores (ProblemDetail)
 ```
 
 ## API
@@ -221,6 +226,48 @@ Cada petición incluye pruebas automáticas que verifican el código HTTP y el
 contenido de la respuesta. La variable `baseUrl` de la colección define la URL
 del servicio. La colección crea un usuario de prueba, inicia sesión para obtener el
 token (se guarda en la variable `token`) y elimina el usuario al final.
+
+## Docker
+
+El `Dockerfile` es multi-stage:
+
+1. **Compilación:** `maven:3.9.9-eclipse-temurin-17` descarga las dependencias
+   (en una capa que queda en caché) y genera el jar.
+2. **Ejecución:** `eclipse-temurin:17-jre-alpine`, solo con el JRE y el jar, y
+   con un usuario sin privilegios (`app`). Expone el puerto 8081.
+
+```bash
+docker build -t ms-usuarios:local .
+```
+
+Para levantarlo junto con PostgreSQL y los demás servicios se usa el
+`docker-compose.yml` de
+[bodegaexpress-infra](https://github.com/BodegaExpressDuoc/bodegaexpress-infra).
+
+## CI/CD y versiones
+
+El workflow [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml) (GitHub Actions):
+
+| Evento | Jobs |
+|---|---|
+| Push a `develop` o pull request hacia `main` | `build-test`: compila y ejecuta las pruebas (`mvnw verify`) |
+| Push a `main` (merge del pull request) | `build-test` y luego `deploy` |
+
+El job `deploy`:
+
+1. crea el repositorio `ms-usuarios` en Amazon ECR si no existe;
+2. construye la imagen y la sube con tres tags: la versión del `pom.xml`
+   (por ejemplo `0.2.0`), el sha corto del commit y `latest`;
+3. ejecuta en la EC2, mediante AWS Systems Manager (SSM), el script `cicd.sh` de
+   bodegaexpress-infra, que descarga la imagen nueva y reinicia solo este servicio.
+
+La rama `main` está protegida: solo cambia mediante pull request desde `develop`.
+Cada entrega se marca con un tag anotado en `main`:
+
+| Versión | Tag | Entrega | Cambios principales |
+|---|---|---|---|
+| 0.1.0 | `v0.1.0` | Evaluación Parcial 2 | CRUD de usuarios con PostgreSQL |
+| 0.2.0 | `v0.2.0` | Evaluación Parcial 3 | Rutas `/api/v1`, login con JWT y Spring Security, Dockerfile, pipeline de despliegue en AWS y acceso solo a través del API Gateway (`FiltroGateway`) |
 
 ## Servicios relacionados
 
